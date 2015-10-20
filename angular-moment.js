@@ -166,17 +166,18 @@
 				
 				/**
 				 * @ngdoc property
-				 * @name angularMoment.config.amTimeAgoConfig#decimalTime
+				 * @name angularMoment.config.amTimeAgoConfig#decimalPrecision
 				 * @propertyOf angularMoment.config:amTimeAgoConfig
 				 * @returns {number || object} The precision of decimal places to use.
 				 *
 				 * @description
 				 * Specify either a number or an object containing the desired precision per unit of time.
+				 * Defaults to 0
 				 * 
 				 * @example
 				 * { 's': 0, 'mm': 2, 'hh': 1, 'dd': 1, 'yy': 0 }
 				 */
-				 decimalTime: null
+				 decimalPrecision: 0
 			})
 
 		/**
@@ -195,7 +196,7 @@
 					var titleFormat = amTimeAgoConfig.titleFormat;
 					var fullDateThreshold = amTimeAgoConfig.fullDateThreshold;
 					var fullDateFormat = amTimeAgoConfig.fullDateFormat;
-					var decimalTime = amTimeAgoConfig.decimalTime;
+					var precision = amTimeAgoConfig.decimalPrecision;
 					var localDate = new Date().getTime();
 					var modelName = attr.amTimeAgo;
 					var currentFrom;
@@ -229,8 +230,10 @@
 
 						if (showFullDate) {
 							element.text(momentInstance.format(fullDateFormat));
-						} else {
+						} else if (!!precision && precision !== 0) {
 							element.text(getTimePrecision(momentInstance));
+						} else {
+							element.text(momentInstance.from(getNow(), withoutSuffix));
 						}
 
 						if (titleFormat && !element.attr('title')) {
@@ -270,17 +273,24 @@
 					}
 					
 					function getTimePrecision(momentInstance) {
-						var timeDuration = moment.duration(getNow().diff(momentInstance));
-						var timeUnits = { 's': 'seconds', 'mm': 'minutes', 'hh': 'hours', 'dd': 'days', 'yy': 'years' };
+						var timeDuration = moment.duration(Math.abs(getNow().diff(momentInstance)));
+						var timeUnits = { 
+							's': 'seconds', 
+							'mm': 'minutes', 
+							'hh': 'hours', 
+							'dd': 'days',
+							'yy': 'years' 
+						};
 						var timeUnit;
+						var isFuture;
 						
-						if (angular.isNumber(decimalTime)) {
-							decimalTime = { 's': decimalTime, 'mm': decimalTime, 'hh': decimalTime, 'dd': decimalTime, 'yy': decimalTime };
+						if (angular.isNumber(precision)) {
+							precision = { 's': precision, 'mm': precision, 'hh': precision, 'dd': precision, 'yy': precision };
 						}
 						
 						if (timeDuration < 1000 * 60) {
 							timeUnit = 's';
-						} else if (timeDuration < 1000 * 60 * 60) {
+						} else if (timeDuration < 1000 * 60 * 60) {							
 						 	timeUnit = 'mm';
 						} else if (timeDuration < 1000 * 60 * 60 * 24) {
 							timeUnit = 'hh';
@@ -289,8 +299,10 @@
 						} else {
 							timeUnit = 'yy';
 						}
-				
-						return moment.localeData().relativeTime(timeDuration.as(timeUnits[timeUnit]).toFixed(decimalTime[timeUnit]), withoutSuffix, timeUnit);
+						
+						isFuture = getNow().diff(momentInstance) < 0 ? true : false;
+						
+						return moment.localeData().relativeTime(timeDuration.as(timeUnits[timeUnit]).toFixed(precision[timeUnit]), withoutSuffix, timeUnit, isFuture);
 					}
 
 					scope.$watch(modelName, function (value) {
